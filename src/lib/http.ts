@@ -25,7 +25,10 @@ export class ApiError extends Error {
 
 function getBaseUrl(): string {
   if (typeof window === "undefined") {
-    return process.env.API_URL_INTERNAL ?? "http://localhost:3000";
+    if (process.env.API_URL_INTERNAL) return process.env.API_URL_INTERNAL;
+    // Em Vercel, VERCEL_URL é injetado automaticamente em todos os deployments
+    if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+    return "http://localhost:3000";
   }
   return process.env.NEXT_PUBLIC_API_URL ?? "";
 }
