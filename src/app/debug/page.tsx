@@ -1,7 +1,9 @@
 import { headers } from "next/headers";
-import { deriveTenant, tenantQueryParams } from "@/lib/tenant";
+import { deriveTenant, getTenantFromRequest, tenantQueryParams } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
+
+const BUILD_MARKER = "v2-vercel-url-fix";
 
 async function probe(url: string) {
   try {
@@ -23,7 +25,9 @@ export default async function DebugPage() {
   h.forEach((v, k) => (allHeaders[k] = v));
 
   const rawHost = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const tenant = deriveTenant(rawHost);
+  const tenantFromHost = deriveTenant(rawHost);
+  const tenantResolved = getTenantFromRequest(); // após middleware (query/cookie/env)
+  const tenant = tenantResolved; // usar o resolvido pra montar URL real
   const qp = tenantQueryParams(tenant);
 
   const apiBase = process.env.API_URL_INTERNAL ?? "http://localhost:3000";
@@ -42,10 +46,16 @@ export default async function DebugPage() {
     <div className="space-y-6 font-mono text-xs">
       <h1 className="font-sans text-2xl font-bold">Informações de Debug</h1>
 
+      <Section title={`Build marker: ${BUILD_MARKER}`}>{new Date().toISOString()}</Section>
+
       <Section title="Host Header">{rawHost}</Section>
 
       <Section title="Derived Tenant (from host)">
-        <Pre>{JSON.stringify({ subdomain: tenant.subdomain ?? "NULL", custom_domain: tenant.custom_domain ?? "NULL" }, null, 2)}</Pre>
+        <Pre>{JSON.stringify({ subdomain: tenantFromHost.subdomain ?? "NULL", custom_domain: tenantFromHost.custom_domain ?? "NULL" }, null, 2)}</Pre>
+      </Section>
+
+      <Section title="Tenant resolved by MIDDLEWARE (query/cookie/env)">
+        <Pre>{JSON.stringify({ subdomain: tenantResolved.subdomain ?? "NULL", custom_domain: tenantResolved.custom_domain ?? "NULL", host: tenantResolved.host }, null, 2)}</Pre>
       </Section>
 
       <Section title="Query Params (sent to API)">
