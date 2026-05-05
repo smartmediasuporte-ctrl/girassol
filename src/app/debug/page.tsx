@@ -1,10 +1,11 @@
 import { headers } from "next/headers";
 import { deriveTenant, tenantQueryParams } from "@/lib/tenant";
 import { getTenantFromRequest } from "@/lib/tenant-server";
+import { getBaseUrl } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
-const BUILD_MARKER = "v4-middleware-moved-to-src";
+const BUILD_MARKER = "v5-getBaseUrl-real";
 
 async function probe(url: string) {
   try {
@@ -31,7 +32,8 @@ export default async function DebugPage() {
   const tenant = tenantResolved; // usar o resolvido pra montar URL real
   const qp = tenantQueryParams(tenant);
 
-  const apiBase = process.env.API_URL_INTERNAL ?? "http://localhost:3000";
+  // Usa o MESMO getBaseUrl que o http.ts real usa (não hardcoded)
+  const apiBase = getBaseUrl();
   const urlWithout = `${apiBase}/apiv3/store?${qp.toString()}`;
   const urlWithHost = `${urlWithout}&host=${encodeURIComponent(tenant.host)}`;
 
@@ -40,6 +42,9 @@ export default async function DebugPage() {
   const env = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "",
     API_URL_INTERNAL: process.env.API_URL_INTERNAL ?? "",
+    VERCEL_URL: process.env.VERCEL_URL ?? "",
+    VERCEL: process.env.VERCEL ?? "",
+    VERCEL_ENV: process.env.VERCEL_ENV ?? "",
     NODE_ENV: process.env.NODE_ENV ?? "",
   };
 

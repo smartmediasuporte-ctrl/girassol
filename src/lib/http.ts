@@ -24,7 +24,7 @@ export class ApiError extends Error {
   }
 }
 
-function getBaseUrl(): string {
+export function getBaseUrl(): string {
   if (typeof window === "undefined") {
     if (process.env.API_URL_INTERNAL) return process.env.API_URL_INTERNAL;
     // Em Vercel, VERCEL_URL é injetado automaticamente em todos os deployments
