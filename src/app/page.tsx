@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { apiFetch } from "@/lib/http";
-import { getTenantFromRequest } from "@/lib/tenant";
+import { getTenantFromRequest } from "@/lib/tenant-server";
 import type { Product, Store } from "@/lib/types";
 import { ProductCard } from "@/components/ProductCard";
 

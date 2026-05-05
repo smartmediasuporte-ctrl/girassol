@@ -1,9 +1,10 @@
 import { headers } from "next/headers";
-import { deriveTenant, getTenantFromRequest, tenantQueryParams } from "@/lib/tenant";
+import { deriveTenant, tenantQueryParams } from "@/lib/tenant";
+import { getTenantFromRequest } from "@/lib/tenant-server";
 
 export const dynamic = "force-dynamic";
 
-const BUILD_MARKER = "v2-vercel-url-fix";
+const BUILD_MARKER = "v3-middleware-edge-fix";
 
 async function probe(url: string) {
   try {

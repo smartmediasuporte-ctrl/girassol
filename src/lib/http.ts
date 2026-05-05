@@ -3,7 +3,8 @@
 // - manda subdomain + custom_domain + host raw como query params
 // - normaliza response shape: { data, status, count, http_status }
 
-import { getTenantFromRequest, tenantQueryParams } from "./tenant";
+import { tenantQueryParams } from "./tenant";
+import { getTenantFromRequest } from "./tenant-server";
 
 export type ApiEnvelope<T> = {
   data: T;

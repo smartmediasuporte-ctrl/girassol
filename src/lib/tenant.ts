@@ -46,20 +46,9 @@ export function deriveTenant(rawHost: string | null | undefined): Tenant {
   return { subdomain: null, custom_domain: host, host };
 }
 
-import { headers } from "next/headers";
-
-// Lê o tenant resolvido pelo middleware (fonte única de verdade).
-// Os headers x-tenant-* são injetados em todo request.
-export function getTenantFromRequest(): Tenant {
-  const h = headers();
-  const sub = h.get("x-tenant-subdomain");
-  const cd = h.get("x-tenant-custom-domain");
-  return {
-    subdomain: sub && sub !== "NULL" ? sub : null,
-    custom_domain: cd && cd !== "NULL" ? cd : null,
-    host: h.get("x-tenant-host") ?? "",
-  };
-}
+// NOTA: getTenantFromRequest mora em src/lib/tenant-server.ts
+// (este arquivo precisa ser pure pra rodar em Edge runtime do middleware,
+// e next/headers só pode ser usado em Server Components/Actions/Route Handlers).
 
 export function tenantQueryParams(t: Tenant): URLSearchParams {
   const qp = new URLSearchParams();
