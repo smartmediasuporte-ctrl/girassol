@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "prisma generate && prisma db push --skip-generate && next build",
+  "framework": "nextjs",
+  "regions": ["gru1"],
+  "functions": {
+    "src/app/apiv3/admin/upload/route.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
+}

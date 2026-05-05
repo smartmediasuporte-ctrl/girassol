@@ -1,0 +1,123 @@
+// Prisma schema — storefront multi-tenant
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon/Supabase usam pgbouncer/pooler; DIRECT_URL é opcional pra migrate
+  directUrl = env("DIRECT_URL")
+}
+
+model Store {
+  id                String    @id @default(cuid())
+  subdomain         String    @unique
+  customDomain      String?   @unique
+  name              String
+  slogan            String
+  logoUrl           String
+  bannerUrl         String
+  primaryColor      String
+  whatsapp          String
+  address           String
+  deliveryFeeCents  Int
+  minOrderCents     Int
+  open              Boolean   @default(true)
+
+  // Hash da senha do admin do tenant (bcrypt-like via crypto). Vazio = usa ADMIN_PASSWORD global
+  adminPasswordHash String?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  products          Product[]
+  orders            Order[]
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  slug            String
+  name            String
+  description     String
+  imageUrl        String
+  priceCents      Int
+  listPriceCents  Int?
+  category        String
+  unit            String
+  stock           Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orderItems      OrderItem[]
+
+  @@unique([storeId, slug])
+  @@index([storeId, category])
+}
+
+model Order {
+  id                String    @id @default(cuid())
+  storeId           String
+  store             Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Cliente (denormalizado — não temos auth de cliente ainda)
+  customerName     String
+  customerPhone    String
+  customerEmail    String?
+
+  // Entrega
+  deliveryAddress  String
+  deliveryNotes    String?
+
+  // Pagamento / status
+  paymentMethod    String   // pix | card | cash
+  paymentStatus    String   @default("pending") // pending | paid | expired | cancelled | refunded
+  status           String   @default("pending") // pending | confirmed | delivered | cancelled
+
+  // Valores
+  subtotalCents    Int
+  deliveryFeeCents Int
+  totalCents       Int
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items            OrderItem[]
+  pix              PixCharge?
+
+  @@index([storeId, createdAt])
+  @@index([storeId, paymentStatus])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  productName String  // snapshot (caso produto seja editado/excluído depois)
+  priceCents  Int
+  qty         Int
+
+  @@index([orderId])
+}
+
+model PixCharge {
+  id             String   @id @default(cuid())
+  orderId        String   @unique
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider       String   // mercadopago | asaas | fake
+  externalId     String   // charge id do provider
+  qrCode         String   // copia-e-cola
+  qrCodeBase64   String   // PNG base64
+  expiresAt      DateTime
+  amountCents    Int
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([provider, externalId])
+}

@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #ffb300;
+}
+
+html,
+body {
+  background: #fafafa;
+  color: #1a1a1a;
+}
