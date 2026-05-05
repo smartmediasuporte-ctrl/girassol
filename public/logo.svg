@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="currentColor">
+  <g transform="translate(100,100)">
+    <g fill="currentColor">
+      <!-- 16 pétalas em volta -->
+      <g>
+        <ellipse cx="0" cy="-55" rx="10" ry="28"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(22.5)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(45)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(67.5)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(90)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(112.5)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(135)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(157.5)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(180)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(202.5)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(225)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(247.5)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(270)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(292.5)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(315)"/>
+        <ellipse cx="0" cy="-55" rx="10" ry="28" transform="rotate(337.5)"/>
+      </g>
+      <!-- Miolo -->
+      <circle cx="0" cy="0" r="32" fill="currentColor"/>
+      <circle cx="0" cy="0" r="26" fill="#fff" opacity="0.15"/>
+    </g>
+  </g>
+</svg>

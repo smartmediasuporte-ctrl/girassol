@@ -2,12 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tipografia: Inter (corpo) + Playfair Display (display) + Allura (script) */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Allura&display=swap");
+
 :root {
-  --brand: #ffb300;
+  --sun: #e87b0f;
+  --leaf: #5a7a3f;
+  --cream: #faf6ee;
+  --ink: #2a1f14;
 }
 
 html,
 body {
-  background: #fafafa;
-  color: #1a1a1a;
+  background-color: var(--cream);
+  color: var(--ink);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgba(232, 123, 15, 0.25);
+  color: var(--ink);
+}
+
+/* Estilos de prosa (posts e história) */
+.prose-girassol {
+  @apply text-ink-700 leading-relaxed;
+}
+.prose-girassol h2 {
+  @apply font-display text-3xl text-ink-900 mt-10 mb-3;
+}
+.prose-girassol h3 {
+  @apply font-display text-2xl text-ink-900 mt-8 mb-2;
+}
+.prose-girassol p {
+  @apply my-4;
+}
+.prose-girassol a {
+  @apply text-sun-600 underline decoration-sun-300 underline-offset-4 hover:decoration-sun-600;
+}
+.prose-girassol blockquote {
+  @apply border-l-4 border-sun-400 pl-4 italic my-6 text-ink-700;
+}
+.prose-girassol ul {
+  @apply list-disc pl-6 my-4 space-y-1;
+}
+.prose-girassol img {
+  @apply rounded-2xl my-6;
 }

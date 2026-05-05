@@ -1,36 +1,32 @@
 import Link from "next/link";
-import { headers } from "next/headers";
-import { tenantStoreFromHeaders } from "@/lib/auth";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  headers(); // força dinâmico
-  const store = await tenantStoreFromHeaders();
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const isAuthed = cookies().get("admin_session") != null;
-
   return (
     <div className="min-h-[60vh]">
-      <div className="-mx-4 mb-6 border-b border-black/10 bg-white px-4 py-3 text-sm">
-        <div className="mx-auto flex max-w-6xl items-center gap-4">
-          <span className="font-semibold">Admin · {store?.name ?? "—"}</span>
+      <div className="border-b border-cream-200 bg-white">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3 text-sm">
+          <Link href="/admin" className="font-display text-base text-ink-900">
+            Admin · Girassol
+          </Link>
           {isAuthed && (
             <>
-              <Link href="/admin" className="text-black/70 hover:underline">
-                Dashboard
+              <Link href="/admin" className="text-ink-700 hover:text-sun-600">
+                Início
               </Link>
-              <Link href="/admin/pedidos" className="text-black/70 hover:underline">
-                Pedidos
+              <Link href="/admin/cardapio" className="text-ink-700 hover:text-sun-600">
+                Cardápio
               </Link>
-              <Link href="/admin/produtos" className="text-black/70 hover:underline">
-                Produtos
+              <Link href="/admin/categorias" className="text-ink-700 hover:text-sun-600">
+                Categorias
               </Link>
-              <Link href="/admin/configuracoes" className="text-black/70 hover:underline">
+              <Link href="/admin/posts" className="text-ink-700 hover:text-sun-600">
+                Posts
+              </Link>
+              <Link href="/admin/configuracoes" className="text-ink-700 hover:text-sun-600">
                 Configurações
               </Link>
               <form action="/admin/logout" method="post" className="ml-auto">
@@ -40,7 +36,7 @@ export default async function AdminLayout({
           )}
         </div>
       </div>
-      {children}
+      <div className="mx-auto max-w-6xl px-4 py-8">{children}</div>
     </div>
   );
 }

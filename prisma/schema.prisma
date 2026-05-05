@@ -1,4 +1,5 @@
-// Prisma schema — storefront multi-tenant
+// Schema v2 — Site institucional do Restaurante Girassol (single store)
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,118 +7,121 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // Neon/Supabase usam pgbouncer/pooler; DIRECT_URL é opcional pra migrate
   directUrl = env("DIRECT_URL")
 }
 
-model Store {
-  id                String    @id @default(cuid())
-  subdomain         String    @unique
-  customDomain      String?   @unique
-  name              String
-  slogan            String
-  logoUrl           String
-  bannerUrl         String
-  primaryColor      String
-  whatsapp          String
-  address           String
-  deliveryFeeCents  Int
-  minOrderCents     Int
-  open              Boolean   @default(true)
+// Configuração global do site (linha única, id="singleton")
+model Settings {
+  id                String   @id @default("singleton")
+  siteName          String   @default("Restaurante Girassol")
+  tagline           String   @default("Alimentação saudável há décadas em Brasília")
+  primaryColor      String   @default("#E87B0F")
+  secondaryColor   String   @default("#5A7A3F")
 
-  // Hash da senha do admin do tenant (bcrypt-like via crypto). Vazio = usa ADMIN_PASSWORD global
-  adminPasswordHash String?
+  // Contato
+  whatsapp          String   @default("556132421542")
+  phone             String   @default("(61) 3242-1542")
+  email             String?
+  instagram         String   @default("restaurantegirassolbsb")
+  facebook          String?
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  // Localização
+  addressLine       String   @default("Asa Sul, Brasília — DF")
+  mapEmbedUrl       String?  // src do iframe Google Maps
 
-  products          Product[]
-  orders            Order[]
+  // Horários (texto livre por dia da semana)
+  hoursWeek         String   @default("Segunda a Sexta: 11h–15h e 18h–22h")
+  hoursWeekend      String   @default("Sábado e Domingo: 11h–16h")
+
+  // Conteúdo da home (CMS leve)
+  heroTitle         String   @default("Há décadas cultivando saúde em Brasília")
+  heroSubtitle     String   @default("Alimentação viva, natural e vegetariana. A tradição que nasce da terra.")
+  heroImageUrl      String?
+  aboutShort        String   @default("Mais que um restaurante, somos um ponto de encontro de quem busca uma vida mais leve, natural e consciente.")
+
+  // Banner promocional (campanha tarde)
+  promoActive       Boolean  @default(true)
+  promoTitle        String   @default("Tarde no Girassol")
+  promoSubtitle     String   @default("Açaí, sucos e lanches naturais com 15% off entre 14h e 17h")
+
+  // SEO
+  seoDescription    String   @default("Restaurante vegetariano tradicional em Brasília. Comida natural, sucos, açaí, lanches saudáveis e ambiente acolhedor há décadas na Asa Sul.")
+
+  updatedAt         DateTime @updatedAt
 }
 
-model Product {
-  id              String   @id @default(cuid())
-  storeId         String
-  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  slug            String
-  name            String
-  description     String
-  imageUrl        String
-  priceCents      Int
-  listPriceCents  Int?
-  category        String
-  unit            String
-  stock           Int      @default(0)
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  orderItems      OrderItem[]
-
-  @@unique([storeId, slug])
-  @@index([storeId, category])
+model MenuCategory {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  description String?
+  sortOrder   Int        @default(0)
+  active      Boolean    @default(true)
+  items       MenuItem[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
-model Order {
-  id                String    @id @default(cuid())
-  storeId           String
-  store             Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+model MenuItem {
+  id           String       @id @default(cuid())
+  categoryId   String
+  category     MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  slug         String       @unique
+  name         String
+  description  String
+  imageUrl     String?
+  priceCents   Int
+  // Tags: vegan | vegetarian | gluten_free | lactose_free | sugar_free | raw
+  tags         String       @default("") // separado por vírgula
+  highlight    Boolean      @default(false) // destaca na home
+  sortOrder    Int          @default(0)
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
-  // Cliente (denormalizado — não temos auth de cliente ainda)
-  customerName     String
-  customerPhone    String
-  customerEmail    String?
-
-  // Entrega
-  deliveryAddress  String
-  deliveryNotes    String?
-
-  // Pagamento / status
-  paymentMethod    String   // pix | card | cash
-  paymentStatus    String   @default("pending") // pending | paid | expired | cancelled | refunded
-  status           String   @default("pending") // pending | confirmed | delivered | cancelled
-
-  // Valores
-  subtotalCents    Int
-  deliveryFeeCents Int
-  totalCents       Int
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  items            OrderItem[]
-  pix              PixCharge?
-
-  @@index([storeId, createdAt])
-  @@index([storeId, paymentStatus])
+  @@index([categoryId, sortOrder])
 }
 
-model OrderItem {
-  id          String  @id @default(cuid())
-  orderId     String
-  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product @relation(fields: [productId], references: [id])
-  productName String  // snapshot (caso produto seja editado/excluído depois)
-  priceCents  Int
-  qty         Int
+model Post {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String
+  content     String   // markdown ou HTML simples
+  coverUrl    String?
+  category    String   @default("blog") // blog | evento | receita
+  published   Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([orderId])
+  @@index([published, publishedAt])
 }
 
-model PixCharge {
-  id             String   @id @default(cuid())
-  orderId        String   @unique
-  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider       String   // mercadopago | asaas | fake
-  externalId     String   // charge id do provider
-  qrCode         String   // copia-e-cola
-  qrCodeBase64   String   // PNG base64
-  expiresAt      DateTime
-  amountCents    Int
-  status         String   @default("pending")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+model Testimonial {
+  id        String   @id @default(cuid())
+  author    String
+  text      String
+  rating    Int      @default(5)
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
 
-  @@unique([provider, externalId])
+model GalleryImage {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// Sessão admin única (sem multi-tenant). Senha vem de env.
+model AdminUser {
+  id                String   @id @default(cuid())
+  username          String   @unique @default("admin")
+  passwordHash      String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }

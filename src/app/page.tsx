@@ -1,122 +1,302 @@
 import Link from "next/link";
-import { getTenantFromRequest } from "@/lib/tenant-server";
-import { findStoreByTenant, listProducts } from "@/lib/repos";
-import { ProductCard } from "@/components/ProductCard";
+import { getSettings } from "@/lib/settings";
+import {
+  listGalleryImages,
+  listHighlightedItems,
+  listPosts,
+  listTestimonials,
+} from "@/lib/repos";
+import { MenuItemCard } from "@/components/MenuItemCard";
+import { whatsappLink } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-async function load() {
-  const tenant = getTenantFromRequest();
-  const store = await findStoreByTenant({
-    subdomain: tenant.subdomain,
-    customDomain: tenant.custom_domain,
-  });
-  if (!store) return { store: null, featured: [] as any[] };
-  const products = await listProducts(store.id);
-  return { store, featured: products.slice(0, 8) };
-}
-
 export default async function HomePage() {
-  const { store, featured } = await load();
-
-  if (!store) {
-    // Sem tenant válido → mostra landing/marketing.
-    const tenant = getTenantFromRequest();
-    const triedSubdomain = tenant.subdomain ?? tenant.custom_domain;
-
-    return (
-      <div className="space-y-10">
-        {triedSubdomain && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            Não encontramos a loja <code>{triedSubdomain}</code>. Talvez ela ainda não exista.
-          </div>
-        )}
-
-        <section className="rounded-3xl bg-gradient-to-br from-brand-500 to-brand-700 p-10 text-white">
-          <h1 className="text-4xl font-bold leading-tight md:text-5xl">
-            Sua loja online em 30 segundos.
-          </h1>
-          <p className="mt-3 max-w-xl text-white/90">
-            Storefront multi-tenant com catálogo, carrinho, PIX integrado (Mercado Pago / Asaas)
-            e painel admin. Hospede no seu próprio subdomínio.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/criar-loja"
-              className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-black/85"
-            >
-              Criar minha loja grátis
-            </Link>
-            <Link
-              href="/?_tenant=girassolemporio"
-              className="rounded-lg bg-white/15 px-5 py-3 text-sm font-semibold text-white hover:bg-white/25"
-            >
-              Ver loja de exemplo
-            </Link>
-          </div>
-        </section>
-
-        <section className="grid gap-4 md:grid-cols-3">
-          <Feature
-            title="PIX de verdade"
-            text="QR code dinâmico via Mercado Pago ou Asaas. Webhook automático atualiza status do pedido."
-          />
-          <Feature
-            title="Painel admin pronto"
-            text="Login, gestão de pedidos, CRUD de produtos e dashboard de faturamento — sem mexer em código."
-          />
-          <Feature
-            title="Multi-tenant nativo"
-            text="Cada lojista tem o próprio subdomínio. Dados isolados no banco, sessões separadas."
-          />
-        </section>
-
-        <div className="text-xs text-black/40">
-          <Link href="/debug" className="underline">/debug</Link> ·{" "}
-          <Link href="/criar-loja" className="underline">/criar-loja</Link>
-        </div>
-      </div>
-    );
-  }
+  const [settings, highlights, testimonials, gallery, posts] = await Promise.all([
+    getSettings(),
+    listHighlightedItems(8),
+    listTestimonials(),
+    listGalleryImages(),
+    listPosts({ limit: 3 }),
+  ]);
 
   return (
-    <div className="space-y-8">
-      <section
-        className="rounded-2xl p-8 text-white"
-        style={{ background: store.primary_color }}
-      >
-        <h1 className="text-3xl font-bold">{store.name}</h1>
-        <p className="mt-1 max-w-xl text-white/90">{store.slogan}</p>
-        <Link
-          href="/produtos"
-          className="mt-4 inline-block rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-black/80"
-        >
-          Ver catálogo
-        </Link>
+    <>
+      {/* HERO */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-cream-50 via-cream-100 to-cream-200" />
+        <div className="absolute -right-32 -top-32 -z-10 h-96 w-96 rounded-full bg-sun-200/40 blur-3xl" />
+        <div className="absolute -left-40 bottom-0 -z-10 h-96 w-96 rounded-full bg-leaf-200/40 blur-3xl" />
+
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 md:grid-cols-2 md:py-24">
+          <div className="flex flex-col justify-center">
+            <p className="mb-3 text-sm font-medium uppercase tracking-[0.25em] text-sun-600">
+              Asa Sul · Brasília
+            </p>
+            <h1 className="font-display text-5xl leading-tight text-ink-900 md:text-6xl">
+              {settings.heroTitle}
+            </h1>
+            <p className="mt-5 max-w-lg text-lg text-ink-700">
+              {settings.heroSubtitle}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/cardapio"
+                className="rounded-full bg-sun-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-sun-500/30 transition hover:bg-sun-600"
+              >
+                Ver cardápio
+              </Link>
+              <Link
+                href="/visite"
+                className="rounded-full border border-leaf-500 bg-transparent px-6 py-3 text-sm font-semibold text-leaf-700 transition hover:bg-leaf-500 hover:text-white"
+              >
+                Como visitar
+              </Link>
+            </div>
+
+            <div className="mt-10 flex items-center gap-6 text-sm text-ink-500">
+              <Stat icon="📍" label="Asa Sul, DF" />
+              <Stat icon="🌱" label="Vegetariano" />
+              <Stat icon="✨" label="Décadas de tradição" />
+            </div>
+          </div>
+
+          {/* Imagem decorativa do hero */}
+          <div className="relative">
+            <div className="absolute inset-0 rotate-3 rounded-[2.5rem] bg-leaf-300/30" />
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2.5rem] bg-cream-200 shadow-xl ring-1 ring-cream-300/60">
+              {settings.heroImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={settings.heroImageUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="grid h-full place-items-center text-7xl">🌻</div>
+              )}
+            </div>
+            <div className="absolute -bottom-6 -left-6 rounded-2xl bg-white p-4 shadow-lg ring-1 ring-cream-200">
+              <div className="font-script text-2xl text-sun-500">há décadas</div>
+              <div className="text-xs uppercase tracking-widest text-ink-500">
+                cultivando saúde
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section>
-        <div className="mb-3 flex items-end justify-between">
-          <h2 className="text-xl font-semibold">Destaques</h2>
-          <Link href="/produtos" className="text-sm text-black/60 hover:underline">
-            ver todos →
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {featured.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+      {/* PROMO da tarde */}
+      {settings.promoActive && (
+        <section className="mx-auto max-w-6xl px-4 py-12">
+          <div className="overflow-hidden rounded-3xl bg-leaf-700 p-8 text-cream-50 md:p-12">
+            <div className="flex flex-wrap items-center gap-6">
+              <div className="flex-1 min-w-[260px]">
+                <p className="text-xs uppercase tracking-[0.25em] text-sun-300">
+                  Verão Saudável
+                </p>
+                <h2 className="mt-2 font-display text-4xl">{settings.promoTitle}</h2>
+                <p className="mt-2 max-w-xl text-cream-200/90">
+                  {settings.promoSubtitle}
+                </p>
+              </div>
+              <Link
+                href="/cardapio"
+                className="rounded-full bg-sun-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-sun-500/30 hover:bg-sun-400"
+              >
+                Ver opções da tarde
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* PILARES */}
+      <section className="mx-auto max-w-6xl px-4 py-12">
+        <div className="grid gap-6 md:grid-cols-3">
+          <Pillar
+            emoji="🌱"
+            title="Alimentação viva"
+            text="Pratos preparados com ingredientes frescos, integrais e ricos em nutrientes — seguindo a tradição que herdamos."
+          />
+          <Pillar
+            emoji="🍂"
+            title="Tradição que renova"
+            text="Décadas servindo Brasília com o mesmo cuidado artesanal, agora também no jeito da sua geração."
+          />
+          <Pillar
+            emoji="🤝"
+            title="Comunidade"
+            text="Mais que um restaurante: um lugar de encontro de quem busca leveza, sabor e propósito."
+          />
         </div>
       </section>
+
+      {/* DESTAQUES DO CARDÁPIO */}
+      {highlights.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-12">
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-sun-600">Cardápio</p>
+              <h2 className="mt-1 font-display text-4xl text-ink-900">Destaques</h2>
+            </div>
+            <Link
+              href="/cardapio"
+              className="text-sm font-semibold text-leaf-700 hover:underline"
+            >
+              ver tudo →
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+            {highlights.map((it) => (
+              <MenuItemCard key={it.id} item={it} dense />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* GALERIA */}
+      {gallery.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-12">
+          <div className="mb-6">
+            <p className="text-xs uppercase tracking-[0.25em] text-sun-600">Galeria</p>
+            <h2 className="mt-1 font-display text-4xl text-ink-900">A casa por dentro</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {gallery.slice(0, 8).map((img) => (
+              <div
+                key={img.id}
+                className="aspect-square overflow-hidden rounded-2xl bg-cream-200"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.url} alt={img.caption ?? ""} className="h-full w-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* TESTEMUNHOS */}
+      {testimonials.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-12">
+          <div className="mb-6 text-center">
+            <p className="text-xs uppercase tracking-[0.25em] text-sun-600">
+              O que dizem
+            </p>
+            <h2 className="mt-1 font-display text-4xl text-ink-900">
+              Quem já viveu o Girassol
+            </h2>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {testimonials.slice(0, 3).map((t) => (
+              <figure
+                key={t.id}
+                className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-cream-200/60"
+              >
+                <div className="mb-2 text-sun-500">
+                  {"★".repeat(t.rating)}
+                  <span className="text-cream-300">{"★".repeat(5 - t.rating)}</span>
+                </div>
+                <blockquote className="font-display text-lg italic leading-relaxed text-ink-800">
+                  “{t.text}”
+                </blockquote>
+                <figcaption className="mt-4 text-sm text-ink-500">— {t.author}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* COMUNIDADE / POSTS */}
+      {posts.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-12">
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-sun-600">Comunidade</p>
+              <h2 className="mt-1 font-display text-4xl text-ink-900">No nosso jardim</h2>
+            </div>
+            <Link
+              href="/comunidade"
+              className="text-sm font-semibold text-leaf-700 hover:underline"
+            >
+              todos os posts →
+            </Link>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {posts.map((p) => (
+              <Link
+                key={p.id}
+                href={`/comunidade/${p.slug}`}
+                className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-cream-200/60 transition hover:shadow-md"
+              >
+                {p.coverUrl && (
+                  <div className="aspect-[16/10] overflow-hidden bg-cream-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.coverUrl}
+                      alt={p.title}
+                      className="h-full w-full object-cover transition group-hover:scale-105"
+                    />
+                  </div>
+                )}
+                <div className="flex flex-1 flex-col gap-2 p-5">
+                  <p className="text-[10px] uppercase tracking-widest text-sun-600">
+                    {p.category}
+                  </p>
+                  <h3 className="font-display text-xl text-ink-900">{p.title}</h3>
+                  <p className="line-clamp-3 text-sm text-ink-500">{p.excerpt}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* CTA Final */}
+      <section className="mx-auto max-w-6xl px-4 py-16">
+        <div className="rounded-3xl bg-sun-500 p-10 text-center text-white">
+          <h2 className="font-display text-4xl">Vem viver o Girassol</h2>
+          <p className="mx-auto mt-2 max-w-xl text-white/90">
+            Estamos a um passeio na Asa Sul. Reserve sua mesa, peça pelo WhatsApp ou venha
+            sem hora marcada.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <a
+              href={whatsappLink(settings.whatsapp, "Olá! Quero fazer um pedido / reservar.")}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-sun-700 shadow hover:bg-cream-50"
+            >
+              💬 Falar no WhatsApp
+            </a>
+            <Link
+              href="/visite"
+              className="rounded-full bg-leaf-700 px-6 py-3 text-sm font-semibold text-white hover:bg-leaf-800"
+            >
+              Ver localização
+            </Link>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function Stat({ icon, label }: { icon: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span>{icon}</span>
+      <span>{label}</span>
     </div>
   );
 }
 
-function Feature({ title, text }: { title: string; text: string }) {
+function Pillar({ emoji, title, text }: { emoji: string; title: string; text: string }) {
   return (
-    <div className="rounded-2xl border border-black/5 bg-white p-5">
-      <h3 className="font-semibold">{title}</h3>
-      <p className="mt-1 text-sm text-black/60">{text}</p>
+    <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-cream-200/60">
+      <div className="text-3xl">{emoji}</div>
+      <h3 className="mt-3 font-display text-xl text-ink-900">{title}</h3>
+      <p className="mt-1 text-sm text-ink-500">{text}</p>
     </div>
   );
 }

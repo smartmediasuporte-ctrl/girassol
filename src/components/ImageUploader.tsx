@@ -3,19 +3,21 @@
 import { useRef, useState } from "react";
 
 type Props = {
-  name: string; // nome do hidden input que vai pro form
-  defaultValue?: string; // URL inicial (ex: produto sendo editado)
+  name: string;
+  defaultValue?: string;
   label?: string;
-  placeholder?: string; // imagem mostrada quando não há valor
-  aspect?: "square" | "wide"; // square = 1:1 (produto), wide = 4:1 (banner)
+  placeholder?: string;
+  aspect?: "square" | "wide" | "auto";
+  folder?: string;
 };
 
 export function ImageUploader({
   name,
   defaultValue,
   label,
-  placeholder = "/product-placeholder.svg",
+  placeholder,
   aspect = "square",
+  folder,
 }: Props) {
   const [url, setUrl] = useState(defaultValue ?? "");
   const [busy, setBusy] = useState(false);
@@ -30,6 +32,7 @@ export function ImageUploader({
     try {
       const fd = new FormData();
       fd.append("file", file);
+      if (folder) fd.append("folder", folder);
       const res = await fetch("/apiv3/admin/upload", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) {
@@ -41,24 +44,31 @@ export function ImageUploader({
       setError(err?.message ?? String(err));
     } finally {
       setBusy(false);
-      if (inputRef.current) inputRef.current.value = ""; // permite re-selecionar mesmo arquivo
+      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
-  const aspectClass = aspect === "wide" ? "aspect-[4/1]" : "aspect-square";
+  const aspectClass =
+    aspect === "wide" ? "aspect-[4/1]" : aspect === "auto" ? "" : "aspect-square";
 
   return (
     <div>
-      {label && <div className="mb-1 text-sm font-medium text-black/70">{label}</div>}
+      {label && <div className="mb-1 text-sm font-medium text-ink-700">{label}</div>}
       <div
-        className={`relative overflow-hidden rounded-lg border border-black/10 bg-neutral-50 ${aspectClass}`}
+        className={`relative overflow-hidden rounded-xl border border-cream-300 bg-cream-100 ${aspectClass}`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={url || placeholder}
-          alt=""
-          className="h-full w-full object-cover"
-        />
+        {url || placeholder ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={url || placeholder!}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="grid h-full place-items-center text-sm text-ink-500">
+            sem imagem
+          </div>
+        )}
         {busy && (
           <div className="absolute inset-0 grid place-items-center bg-black/40 text-sm font-medium text-white">
             Enviando…
@@ -73,7 +83,7 @@ export function ImageUploader({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 disabled:opacity-50"
+          className="rounded-lg border border-cream-300 bg-white px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-cream-100 disabled:opacity-50"
         >
           {url ? "Trocar imagem" : "Enviar imagem"}
         </button>
@@ -96,9 +106,6 @@ export function ImageUploader({
       </div>
 
       {error && <div className="mt-1 text-xs text-red-600">{error}</div>}
-      {url && (
-        <div className="mt-1 truncate text-xs text-black/40">URL: {url}</div>
-      )}
     </div>
   );
 }

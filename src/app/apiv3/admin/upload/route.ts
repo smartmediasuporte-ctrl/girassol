@@ -7,9 +7,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  let store;
   try {
-    store = await requireAdmin();
+    requireAdmin();
   } catch (e) {
     if (e instanceof AdminAuthError) {
       return NextResponse.json({ error: e.message }, { status: 401 });
@@ -49,10 +48,11 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer());
 
   try {
+    const folder = String(form.get("folder") ?? "girassol");
     const result = await uploadFile(buffer, {
-      storeId: store.id,
       filename,
       contentType: file.type,
+      folder,
     });
     return NextResponse.json({ url: result.url, size: result.size, type: result.contentType });
   } catch (err: any) {

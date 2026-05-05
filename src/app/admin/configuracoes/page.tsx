@@ -1,294 +1,228 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { AdminAuthError, hashPassword, requireAdmin, verifyPassword } from "@/lib/auth";
-import { updateStore } from "@/lib/repos";
-import { prisma } from "@/lib/db";
+import { isAdmin, requireAdmin } from "@/lib/auth";
+import { ensureSettings, updateSettings } from "@/lib/settings";
 import { ImageUploader } from "@/components/ImageUploader";
-import { validateCustomDomain } from "@/lib/subdomain";
 
 export const dynamic = "force-dynamic";
 
-type Search = { saved?: string; error?: string };
-
-export default async function SettingsPage({
+export default async function ConfiguracoesPage({
   searchParams,
 }: {
-  searchParams: Search;
+  searchParams: { saved?: string };
 }) {
-  let store;
-  try {
-    store = await requireAdmin();
-  } catch (e) {
-    if (e instanceof AdminAuthError) redirect("/admin/login");
-    throw e;
-  }
+  if (!isAdmin()) redirect("/admin/login");
+  const settings = await ensureSettings();
 
   async function save(formData: FormData) {
     "use server";
-    const store = await requireAdmin();
-
-    // Custom domain: aceita vazio (remove) ou domínio válido
-    const cdRaw = String(formData.get("custom_domain") ?? "").trim();
-    let customDomain: string | null = null;
-    if (cdRaw) {
-      const v = validateCustomDomain(cdRaw);
-      if (!v.ok) {
-        redirect(`/admin/configuracoes?error=${encodeURIComponent(v.reason)}`);
-      }
-      customDomain = (v as { ok: true; value: string }).value;
-
-      // Verifica que não está usado por OUTRA loja
-      const existing = await prisma.store.findUnique({
-        where: { customDomain },
-      });
-      if (existing && existing.id !== store.id) {
-        redirect(
-          `/admin/configuracoes?error=${encodeURIComponent("Domínio já cadastrado em outra loja")}`,
-        );
-      }
-    }
-
-    try {
-      await updateStore(store.id, {
-        custom_domain: customDomain,
-        name: String(formData.get("name") ?? "").trim(),
-        slogan: String(formData.get("slogan") ?? "").trim(),
-        whatsapp: String(formData.get("whatsapp") ?? "").replace(/\D/g, ""),
-        address: String(formData.get("address") ?? "").trim(),
-        primary_color: String(formData.get("primary_color") ?? "#ffb300"),
-        logo_url: String(formData.get("logo_url") || "/logo-placeholder.svg"),
-        banner_url: String(formData.get("banner_url") || "/banner-placeholder.svg"),
-        delivery_fee_cents: Math.round(
-          parseFloat(String(formData.get("delivery_fee") ?? "0")) * 100,
-        ),
-        min_order_cents: Math.round(
-          parseFloat(String(formData.get("min_order") ?? "0")) * 100,
-        ),
-        open: formData.get("open") === "on",
-      });
-    } catch (err: any) {
-      redirect(`/admin/configuracoes?error=${encodeURIComponent(err?.message ?? String(err))}`);
-    }
-
-    revalidatePath("/admin/configuracoes");
-    revalidatePath("/admin");
+    requireAdmin();
+    await updateSettings({
+      siteName: String(formData.get("siteName") ?? "").trim(),
+      tagline: String(formData.get("tagline") ?? "").trim(),
+      whatsapp: String(formData.get("whatsapp") ?? "").replace(/\D/g, ""),
+      phone: String(formData.get("phone") ?? "").trim(),
+      email: String(formData.get("email") ?? "").trim() || null,
+      instagram: String(formData.get("instagram") ?? "").replace(/^@/, "").trim(),
+      addressLine: String(formData.get("addressLine") ?? "").trim(),
+      mapEmbedUrl: String(formData.get("mapEmbedUrl") ?? "").trim() || null,
+      hoursWeek: String(formData.get("hoursWeek") ?? "").trim(),
+      hoursWeekend: String(formData.get("hoursWeekend") ?? "").trim(),
+      heroTitle: String(formData.get("heroTitle") ?? "").trim(),
+      heroSubtitle: String(formData.get("heroSubtitle") ?? "").trim(),
+      heroImageUrl: String(formData.get("heroImageUrl") ?? "").trim() || null,
+      aboutShort: String(formData.get("aboutShort") ?? "").trim(),
+      promoActive: formData.get("promoActive") === "on",
+      promoTitle: String(formData.get("promoTitle") ?? "").trim(),
+      promoSubtitle: String(formData.get("promoSubtitle") ?? "").trim(),
+      seoDescription: String(formData.get("seoDescription") ?? "").trim(),
+    });
     revalidatePath("/");
+    revalidatePath("/admin/configuracoes");
+    revalidatePath("/visite");
     redirect("/admin/configuracoes?saved=1");
   }
 
-  async function changePassword(formData: FormData) {
-    "use server";
-    const store = await requireAdmin();
-    const current = String(formData.get("current_password") ?? "");
-    const next = String(formData.get("new_password") ?? "");
-
-    if (next.length < 6) {
-      redirect("/admin/configuracoes?error=Nova%20senha%20m%C3%ADn%206%20chars");
-    }
-
-    const dbStore = await prisma.store.findUnique({ where: { id: store.id } });
-    if (dbStore?.adminPasswordHash) {
-      if (!verifyPassword(current, dbStore.adminPasswordHash)) {
-        redirect("/admin/configuracoes?error=Senha%20atual%20incorreta");
-      }
-    } else {
-      // Loja ainda usa ADMIN_PASSWORD global; aceita a senha global como "current"
-      const envPwd = process.env.ADMIN_PASSWORD ?? "";
-      if (current !== envPwd) {
-        redirect("/admin/configuracoes?error=Senha%20atual%20incorreta");
-      }
-    }
-
-    await updateStore(store.id, { adminPasswordHash: hashPassword(next) });
-    redirect("/admin/configuracoes?saved=password");
-  }
-
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Configurações</h1>
-
+    <div className="mx-auto max-w-3xl space-y-4">
+      <h1 className="font-display text-3xl text-ink-900">Configurações do site</h1>
       {searchParams.saved && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-          {searchParams.saved === "password"
-            ? "Senha atualizada com sucesso."
-            : "Configurações salvas com sucesso."}
-        </div>
-      )}
-      {searchParams.error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {searchParams.error}
+        <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+          Salvo com sucesso.
         </div>
       )}
 
-      <form action={save} className="space-y-4 rounded-2xl border border-black/5 bg-white p-6">
-        <h2 className="text-lg font-semibold">Identidade visual</h2>
+      <form action={save} className="space-y-6 rounded-2xl bg-white p-6 ring-1 ring-cream-200/60">
+        <Section title="Identidade">
+          <Field label="Nome do site">
+            <input
+              name="siteName"
+              defaultValue={settings.siteName}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+          <Field label="Tagline (rodapé)">
+            <input
+              name="tagline"
+              defaultValue={settings.tagline}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+        </Section>
 
-        <ImageUploader
-          name="logo_url"
-          label="Logo (recomendado quadrado)"
-          defaultValue={store.logo_url}
-          aspect="square"
-          placeholder="/logo-placeholder.svg"
-        />
-
-        <ImageUploader
-          name="banner_url"
-          label="Banner (proporção larga)"
-          defaultValue={store.banner_url}
-          aspect="wide"
-          placeholder="/banner-placeholder.svg"
-        />
-
-        <Field label="Cor primária">
-          <input
-            name="primary_color"
-            type="color"
-            defaultValue={store.primary_color}
-            className="h-10 w-32 rounded-lg border border-black/10"
+        <Section title="Hero da home">
+          <Field label="Título grande">
+            <input
+              name="heroTitle"
+              defaultValue={settings.heroTitle}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+          <Field label="Subtítulo">
+            <textarea
+              name="heroSubtitle"
+              rows={2}
+              defaultValue={settings.heroSubtitle}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+          <ImageUploader
+            name="heroImageUrl"
+            label="Imagem do hero (vertical 4:5)"
+            defaultValue={settings.heroImageUrl ?? undefined}
+            aspect="auto"
+            folder="site"
           />
-        </Field>
+          <Field label="Sobre curto (mostrado em alguns pontos)">
+            <textarea
+              name="aboutShort"
+              rows={2}
+              defaultValue={settings.aboutShort}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+        </Section>
 
-        <hr className="my-2" />
-        <h2 className="text-lg font-semibold">Domínio próprio</h2>
-        <Field
-          label="Custom domain (opcional)"
-          hint="ex: minhaloja.com.br — deixe vazio pra usar só o subdomínio"
-        >
-          <input
-            name="custom_domain"
-            defaultValue={store.custom_domain ?? ""}
-            placeholder="minhaloja.com.br"
-            className="w-full rounded-lg border border-black/10 px-3 py-2"
-          />
-        </Field>
-        {store.custom_domain && (
-          <div className="rounded-lg bg-neutral-50 p-3 text-xs text-black/70">
-            <strong>Para ativar:</strong> aponte um registro <code>CNAME</code> ou{" "}
-            <code>A</code> de <code>{store.custom_domain}</code> pra esta plataforma
-            no seu provedor DNS. Após o DNS propagar, sua loja ficará acessível em{" "}
-            <code>https://{store.custom_domain}</code>.
+        <Section title="Banner promo (Tarde no Girassol)">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="promoActive" defaultChecked={settings.promoActive} />
+            Mostrar banner promocional na home
+          </label>
+          <Field label="Título da promo">
+            <input
+              name="promoTitle"
+              defaultValue={settings.promoTitle}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+          <Field label="Subtítulo da promo">
+            <input
+              name="promoSubtitle"
+              defaultValue={settings.promoSubtitle}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+        </Section>
+
+        <Section title="Contato">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="WhatsApp (com DDI/DDD)">
+              <input
+                name="whatsapp"
+                defaultValue={settings.whatsapp}
+                placeholder="556132421542"
+                className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+              />
+            </Field>
+            <Field label="Telefone (display)">
+              <input
+                name="phone"
+                defaultValue={settings.phone}
+                className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+              />
+            </Field>
+            <Field label="Email">
+              <input
+                name="email"
+                type="email"
+                defaultValue={settings.email ?? ""}
+                className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+              />
+            </Field>
+            <Field label="Instagram (sem @)">
+              <input
+                name="instagram"
+                defaultValue={settings.instagram ?? ""}
+                className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+              />
+            </Field>
           </div>
-        )}
+        </Section>
 
-        <hr className="my-2" />
-        <h2 className="text-lg font-semibold">Dados da loja</h2>
-
-        <Field label="Nome">
-          <input
-            name="name"
-            required
-            defaultValue={store.name}
-            className="w-full rounded-lg border border-black/10 px-3 py-2"
-          />
-        </Field>
-
-        <Field label="Slogan">
-          <input
-            name="slogan"
-            required
-            defaultValue={store.slogan}
-            className="w-full rounded-lg border border-black/10 px-3 py-2"
-          />
-        </Field>
-
-        <Field label="WhatsApp" hint="formato 5561999999999">
-          <input
-            name="whatsapp"
-            required
-            defaultValue={store.whatsapp}
-            className="w-full rounded-lg border border-black/10 px-3 py-2"
-          />
-        </Field>
-
-        <Field label="Endereço">
-          <input
-            name="address"
-            required
-            defaultValue={store.address}
-            className="w-full rounded-lg border border-black/10 px-3 py-2"
-          />
-        </Field>
-
-        <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Frete fixo (R$)">
+        <Section title="Localização e horários">
+          <Field label="Endereço (display)">
             <input
-              name="delivery_fee"
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              defaultValue={(store.delivery_fee_cents / 100).toFixed(2)}
-              className="w-full rounded-lg border border-black/10 px-3 py-2"
+              name="addressLine"
+              defaultValue={settings.addressLine}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
             />
           </Field>
-          <Field label="Pedido mínimo (R$)">
+          <Field label="URL do iframe Google Maps (opcional)">
             <input
-              name="min_order"
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              defaultValue={(store.min_order_cents / 100).toFixed(2)}
-              className="w-full rounded-lg border border-black/10 px-3 py-2"
+              name="mapEmbedUrl"
+              defaultValue={settings.mapEmbedUrl ?? ""}
+              placeholder="https://www.google.com/maps/embed?pb=..."
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
             />
           </Field>
-        </div>
+          <Field label="Horário semana">
+            <input
+              name="hoursWeek"
+              defaultValue={settings.hoursWeek}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+          <Field label="Horário fim de semana">
+            <input
+              name="hoursWeekend"
+              defaultValue={settings.hoursWeekend}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+        </Section>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="open" defaultChecked={store.open} />
-          Loja aberta (recebendo pedidos)
-        </label>
+        <Section title="SEO">
+          <Field label="Descrição SEO (meta description)">
+            <textarea
+              name="seoDescription"
+              rows={2}
+              defaultValue={settings.seoDescription}
+              className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2"
+            />
+          </Field>
+        </Section>
 
-        <button className="rounded-lg bg-black px-5 py-2 font-semibold text-white hover:bg-black/85">
+        <button className="rounded-full bg-sun-500 px-6 py-2 font-semibold text-white hover:bg-sun-600">
           Salvar configurações
-        </button>
-      </form>
-
-      <form
-        action={changePassword}
-        className="space-y-3 rounded-2xl border border-black/5 bg-white p-6"
-      >
-        <h2 className="text-lg font-semibold">Trocar senha do admin</h2>
-        <Field label="Senha atual">
-          <input
-            name="current_password"
-            type="password"
-            required
-            className="w-full rounded-lg border border-black/10 px-3 py-2"
-          />
-        </Field>
-        <Field label="Nova senha" hint="mínimo 6 caracteres">
-          <input
-            name="new_password"
-            type="password"
-            required
-            minLength={6}
-            className="w-full rounded-lg border border-black/10 px-3 py-2"
-          />
-        </Field>
-        <button className="rounded-lg bg-black px-5 py-2 font-semibold text-white hover:bg-black/85">
-          Trocar senha
         </button>
       </form>
     </div>
   );
 }
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="space-y-3">
+      <legend className="font-display text-lg text-ink-900">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block text-sm">
-      <div className="mb-1 flex items-baseline gap-2">
-        <span className="font-medium text-black/70">{label}</span>
-        {hint && <span className="ml-auto text-xs text-black/40">{hint}</span>}
-      </div>
+      <div className="mb-1 font-medium text-ink-700">{label}</div>
       {children}
     </label>
   );

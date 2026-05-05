@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 
-// Singleton pra evitar múltiplas conexões em dev (HMR)
 declare global {
   // eslint-disable-next-line no-var
   var __prisma: PrismaClient | undefined;
