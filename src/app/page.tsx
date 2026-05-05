@@ -1,21 +1,19 @@
 import Link from "next/link";
-import { apiFetch } from "@/lib/http";
 import { getTenantFromRequest } from "@/lib/tenant-server";
-import type { Product, Store } from "@/lib/types";
+import { findStoreByTenant, listProducts } from "@/lib/repos";
 import { ProductCard } from "@/components/ProductCard";
 
 export const dynamic = "force-dynamic";
 
-async function load(): Promise<{ store: Store | null; featured: Product[] }> {
-  try {
-    const [s, p] = await Promise.all([
-      apiFetch<Store>("/apiv3/store"),
-      apiFetch<Product[]>("/apiv3/products"),
-    ]);
-    return { store: s.data, featured: p.data.slice(0, 8) };
-  } catch {
-    return { store: null, featured: [] };
-  }
+async function load() {
+  const tenant = getTenantFromRequest();
+  const store = await findStoreByTenant({
+    subdomain: tenant.subdomain,
+    customDomain: tenant.custom_domain,
+  });
+  if (!store) return { store: null, featured: [] as any[] };
+  const products = await listProducts(store.id);
+  return { store, featured: products.slice(0, 8) };
 }
 
 export default async function HomePage() {

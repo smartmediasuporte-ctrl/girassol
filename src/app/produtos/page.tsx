@@ -1,20 +1,21 @@
-import { apiFetch } from "@/lib/http";
-import type { Product } from "@/lib/types";
+import { findStoreByTenant, listProducts } from "@/lib/repos";
+import { getTenantFromRequest } from "@/lib/tenant-server";
 import { ProductCard } from "@/components/ProductCard";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 async function load(searchParams: { category?: string; q?: string }) {
-  const params: Record<string, string> = {};
-  if (searchParams.category) params.category = searchParams.category;
-  if (searchParams.q) params.q = searchParams.q;
-  try {
-    const env = await apiFetch<Product[]>("/apiv3/products", { params });
-    return env.data;
-  } catch {
-    return [];
-  }
+  const tenant = getTenantFromRequest();
+  const store = await findStoreByTenant({
+    subdomain: tenant.subdomain,
+    customDomain: tenant.custom_domain,
+  });
+  if (!store) return [];
+  return listProducts(store.id, {
+    category: searchParams.category,
+    q: searchParams.q,
+  });
 }
 
 export default async function ProductsPage({

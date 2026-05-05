@@ -1,30 +1,24 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { CartProvider } from "@/contexts/CartContext";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { apiFetch } from "@/lib/http";
-import type { Store } from "@/lib/types";
+import { findStoreByTenant } from "@/lib/repos";
+import { getTenantFromRequest } from "@/lib/tenant-server";
 
 export const metadata: Metadata = {
   title: "Girassol Storefront",
   description: "Storefront multi-tenant",
 };
 
-async function getStore(): Promise<Store | null> {
-  try {
-    const env = await apiFetch<Store>("/apiv3/store");
-    return env.data;
-  } catch {
-    return null;
-  }
-}
+export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Toca em headers() pra forçar render dinâmico (multi-tenant depende do Host)
-  headers();
-  const store = await getStore();
+  const tenant = getTenantFromRequest();
+  const store = await findStoreByTenant({
+    subdomain: tenant.subdomain,
+    customDomain: tenant.custom_domain,
+  });
 
   return (
     <html lang="pt-BR">

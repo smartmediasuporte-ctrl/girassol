@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { apiFetch } from "@/lib/http";
+import { findProductBySlug, findStoreByTenant } from "@/lib/repos";
+import { getTenantFromRequest } from "@/lib/tenant-server";
 import type { Product } from "@/lib/types";
 import { formatBRL } from "@/lib/format";
 import { AddToCartButton } from "./AddToCartButton";
@@ -7,12 +8,13 @@ import { AddToCartButton } from "./AddToCartButton";
 export const dynamic = "force-dynamic";
 
 async function load(slug: string): Promise<Product | null> {
-  try {
-    const env = await apiFetch<Product>(`/apiv3/product/${slug}`);
-    return env.data;
-  } catch {
-    return null;
-  }
+  const tenant = getTenantFromRequest();
+  const store = await findStoreByTenant({
+    subdomain: tenant.subdomain,
+    customDomain: tenant.custom_domain,
+  });
+  if (!store) return null;
+  return findProductBySlug(store.id, slug);
 }
 
 export default async function PdpPage({ params }: { params: { slug: string } }) {
