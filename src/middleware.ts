@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { deriveTenant } from "./src/lib/tenant";
+import { deriveTenant } from "./lib/tenant";
 
 const TENANT_COOKIE = "preview_tenant";
 

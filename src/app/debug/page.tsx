@@ -4,7 +4,7 @@ import { getTenantFromRequest } from "@/lib/tenant-server";
 
 export const dynamic = "force-dynamic";
 
-const BUILD_MARKER = "v3-middleware-edge-fix";
+const BUILD_MARKER = "v4-middleware-moved-to-src";
 
 async function probe(url: string) {
   try {
